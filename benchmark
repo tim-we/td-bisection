@@ -1,0 +1,53 @@
+#!/bin/bash
+if [ "$1" != "" ]; then
+    echo '# filename, treewidth, vertices, # bags TD, # bags NTD, time, bisection size'
+    for filename in $1/*.gr; do
+        td_file=${filename/.gr/.td}
+
+        # run algorithm
+        output=$(java -jar td-bisection.jar -g "$filename" -td "$td_file" 2>/dev/null)
+        exitcode=$?
+
+        if [ "$exitcode" != "0" ]; then
+          # echo "# error: ($filename)"
+          continue
+        fi
+        
+        # parse time
+        timestr=$(echo "$output" | grep "Max Bisection time:")
+        time=${timestr:20:((${#timestr}-20))}
+
+        # parse bisection size
+        bsstr=$(echo "$output" | grep "Max Bisection size:")
+        bs=${bsstr:20:((${#bsstr}-20))}
+
+        # parse treewidth
+        twstr=$(echo "$output" | grep "Treewidth:")
+        treewidth=${twstr:11:((${#twstr}-11))}
+
+        # parse num vertices
+        vertexstr=$(echo "$output" | grep "Graph vertices:")
+        vertices=${vertexstr:16:((${#vertexstr}-16))}
+
+        # parse TD info
+        tdstr1=$(echo "$output" | grep " TD #bags:")
+        tdstr2=$(echo "$output" | grep "NTD #bags:")
+        tdbags=${tdstr1:11:((${#tdstr1}-11))}
+        ntdbags=${tdstr2:11:((${#tdstr2}-11))}
+
+        short_filename=$(basename $filename)
+        short_filename=${short_filename/.gr/}
+        safe_filename=${short_filename//,/_}
+
+        if [ "$(echo "$output" | grep "Warning: NTD is not optimal.")" != "" ]; then
+            # echo "#! $safe_filename, $treewidth, $vertices, $tdbags, $ntdbags, $time, $bs"
+            continue
+        fi
+
+        echo "$safe_filename, $treewidth, $vertices, $tdbags, $ntdbags, $time, $bs"
+    done
+else
+    echo "Input folder (containing .gr and .td files) argument missing."
+fi
+
+
